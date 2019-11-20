@@ -1,8 +1,10 @@
 import sqlite3
 import pkg_resources
 
-DB_FILENAME = pkg_resources.resource_filename("data/quotes.db")
+DB_FILENAME = pkg_resources.resource_filename(__name__, "data/quotes.db")
+print(DB_FILENAME)
 DB = sqlite3.connect(DB_FILENAME)
+IntegrityError = sqlite3.IntegrityError
 
 
 def run(cmd, *args):
@@ -19,24 +21,27 @@ def new_row(cmd, *args):
 
 def _check_table_exists(table_name):
     cmd = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-    return bool(_results_for(cmd))
+    return bool(run(cmd, table_name))
 
 
-if not _check_table_exists('quotes'):
-    DB.execute("""
-    CREATE TABLE quotes (
-        id INTEGER NOT NULL PRIMARY KEY,
-        quote TEXT NOT NULL,
-        user TEXT NOT NULL,
-        timestamp TEXT NOT NULL
-    )
-    """)
+def init_tables():
+    if not _check_table_exists('quotes'):
+        DB.execute("""
+        CREATE TABLE quotes (
+            id INTEGER NOT NULL PRIMARY KEY,
+            quote TEXT NOT NULL,
+            user TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        )
+        """)
 
 
-if not _check_table_exists('commands'):
-    DB.execute("""
-    CREATE TABLE commands (
-        name TEXT NOT NULL,
-        response TEXT NOT NULL
-    )
-    """)
+    if not _check_table_exists('commands'):
+        DB.execute("""
+        CREATE TABLE commands (
+            name TEXT NOT NULL,
+            response TEXT NOT NULL
+        )
+        """)
+
+init_tables()

@@ -1,4 +1,4 @@
-from .db import BotDB
+import familiar.db as db
 
 from python_twitch_irc import TwitchIrc
 import pkg_resources
@@ -10,7 +10,7 @@ CHANNEL = '#gliitchwiitch'
 RATE_LIMIT_COUNT = 10
 RATE_LIMIT_SECONDS = 30
 BOT_NAME = 'WiitchFamiliar'
-OAUTH_TOKEN = pkg_resources.resource_string("data/secret-token.txt")
+OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt")
 
 # People who have power for certain bot commands.
 # For now, this should be a set of all-lowercase names.
@@ -36,7 +36,6 @@ class FamiliarBot(TwitchIrc):
     # bot infrastructure, keep scrolling for interesting methods
     def __init__(self, *args):
         self.prev_timestamps = []
-        self.db = BotDB()
         super().__init__(*args)
 
     def on_connect(self):
@@ -54,6 +53,8 @@ class FamiliarBot(TwitchIrc):
         What should happen when a chat message appears in the channel (and it
         isn't from this bot).
         """
+        if user == BOT_NAME:
+            return
         message = message.strip()
         if message:
             try:
@@ -65,6 +66,8 @@ class FamiliarBot(TwitchIrc):
                         self.send("I should know how to do that, but I don't NotLikeThis")
                     else:
                         method(rest, user)
+                elif cmd.startswith('!'):
+                    self.try_custom_command(cmd[1:])
             except Exception as e:
                 traceback.print_exc()
                 error_type, error_value = sys.exc_info()[:2]
@@ -93,6 +96,9 @@ class FamiliarBot(TwitchIrc):
     def is_power_user(self, user):
         return user.lower() in COOL_PEOPLE
 
+    def complain_no_permission(self, user):
+        self.send(f"Sorry, {user}, I don't believe you")
+
     # the chat commands start here!
     def cmd_add_quote(self, quote, user):
         quote_id = db.new_row(
@@ -102,9 +108,24 @@ class FamiliarBot(TwitchIrc):
         )
         self.send(f"Added quote #{quote_id}.")
     
-    def cmd_add_command(self, command_def, user):
+    def cmd_add_message(self, message_def, user):
         if self.is_power_user(user):
-            ...
+            if ' ' not in message_def:
+                self.send("Tell me what the response to that command should be.")
+                return
+            name, response = message_def.split(' ', 1)
+            name = name.lstrip('!')
+            try:
+                db.new_row(
+                    "INSERT INTO commands (name, response) VALUES (?, ?)",
+                    name,
+                    response
+                )
+                self.send("Added command !{name}.")
+            except db.IntegrityError:
+                self.send("That command already exists.")
+        else:
+            self.complain_no_permission(user)
     
     def cmd_get_quote(self, query, user):
         if not query:
@@ -115,6 +136,12 @@ class FamiliarBot(TwitchIrc):
                 self._quote_by_rownum(rownum)
             except ValueError:
                 self._quote_by_search(query)
+    
+    def try_custom_command(self, cmd):
+        row = db.run("SELECT (name, response) FROM commands WHERE name=?", cmd)
+        if row:
+            name, response = row
+            self.send(response)
 
     def _quote_random(self):
         quotes = db.run("""
@@ -141,6 +168,10 @@ class FamiliarBot(TwitchIrc):
         self.send(f'(#{id}, submitted by {user})')
     
 
-client = FamiliarBot(BOT_NAME, 'MyTwitchOAuthToken').start()
-client.handle_forever()
+def main():
+    client = FamiliarBot(BOT_NAME, OAUTH_TOKEN).start()
+    client.handle_forever()
 
+
+if __name__ == '__main__':
+    main()

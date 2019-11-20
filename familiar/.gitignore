@@ -1,0 +1,4 @@
+familiar/data
+env
+*.egg-info
+__pycache__
