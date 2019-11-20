@@ -16,7 +16,9 @@ def run(cmd, *args):
 def new_row(cmd, *args):
     cursor = DB.cursor()
     cursor.execute(cmd, args)
-    return cursor.lastrowid
+    rowid = cursor.lastrowid
+    DB.commit()
+    return rowid
 
 
 def _check_table_exists(table_name):
@@ -39,7 +41,7 @@ def init_tables():
     if not _check_table_exists('commands'):
         DB.execute("""
         CREATE TABLE commands (
-            name TEXT NOT NULL,
+            name TEXT UNIQUE NOT NULL,
             response TEXT NOT NULL
         )
         """)

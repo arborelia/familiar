@@ -1,7 +1,8 @@
 import familiar.db as db
 
-from python_twitch_irc import TwitchIrc
+import irc.bot
 import pkg_resources
+import requests
 import sys
 import time
 import traceback
@@ -10,7 +11,8 @@ CHANNEL = '#gliitchwiitch'
 RATE_LIMIT_COUNT = 10
 RATE_LIMIT_SECONDS = 30
 BOT_NAME = 'WiitchFamiliar'
-OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt")
+CLIENT_ID = pkg_resources.resource_string(__name__, "data/client-id.txt").decode('utf-8').strip()
+OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt").decode('utf-8').strip()
 
 # People who have power for certain bot commands.
 # For now, this should be a set of all-lowercase names.
@@ -25,30 +27,81 @@ COMMANDS = {
     '!quote': 'cmd_get_quote',
     '!q': 'cmd_get_quote',
     '!cocoron': 'cmd_random_cocoron',
+
     '!addmsg': 'cmd_add_message',
     '!addmessage': 'cmd_add_message',
+    '!addcmd': 'cmd_add_message',
+    '!addcommand': 'cmd_add_message',
+    '!msg': 'cmd_add_message',
+    '!message': 'cmd_add_message',
+    '!cmd': 'cmd_add_message',
+    '!command': 'cmd_add_message',
     '!delmsg': 'cmd_delete_message',
     '!delmessage': 'cmd_delete_message',
+    '!delcmd': 'cmd_delete_message',
+    '!delcommand': 'cmd_delete_message',
 }
 
 
-class FamiliarBot(TwitchIrc):
+class FamiliarBot(irc.bot.SingleServerIRCBot):
     # bot infrastructure, keep scrolling for interesting methods
-    def __init__(self, *args):
+    def __init__(self, username, client_id, token, channel):
+        self.client_id = client_id
+        self.token = token
+        self.channel = channel
         self.prev_timestamps = []
-        super().__init__(*args)
 
-    def on_connect(self):
-         self.join(CHANNEL)
+        url = f'https://api.twitch.tv/kraken/users?login={username}'
+        headers = {'Client-ID': client_id, 'Accept': 'application/vnd.twitchtv.v5+json'}
+        r = requests.get(url, headers=headers).json()
+        self.channel_id = r['users'][0]['_id']
+        
+        connect_options = [('irc.chat.twitch.tv', 6667, token)]
+        super().__init__(connect_options, username, username)
 
-    def on_message(self, timestamp, tags, channel, user, message):
+    def on_welcome(self, connection, _e):
+        print(f"Joining {self.channel}")
+        connection.cap('REQ', ':twitch.tv/membership')
+        connection.cap('REQ', ':twitch.tv/tags')
+        connection.cap('REQ', ':twitch.tv/commands')
+        connection.join(self.channel)
+        print("Joined")
+
+    def on_pubmsg(self, _c, event):
+        """
+        Handle the irc library's stupid way of reporting a message, and extract
+        the Twitch-relevant info.
+        """
+        message = event.arguments[0]
+        channel = event.target
+        is_moderator = False
+        is_subscriber = False
+        user = '?'
+        for tag in event.tags:
+            if tag['key'] == 'mod' and tag['value'] == '1':
+                is_moderator = True
+            if tag['key'] == 'subscriber' and tag['value'] == '1':
+                is_subscriber = True
+            if tag['key'] == 'display-name':
+                user = tag['value']
+        tags = {
+            'mod': is_moderator,
+            'sub': is_subscriber
+        }
+        self.on_message(
+            channel, user, message, tags
+        )
+    
+    def on_message(self, channel, user, message, tags):
+        print(f"<{user}> {message}")
         if channel == CHANNEL and user != BOT_NAME:
             self.on_channel_message(
                 message,
                 user=user,
+                tags=tags
             )
 
-    def on_channel_message(self, message, user):
+    def on_channel_message(self, message, user, tags):
         """
         What should happen when a chat message appears in the channel (and it
         isn't from this bot).
@@ -61,11 +114,11 @@ class FamiliarBot(TwitchIrc):
                 cmd, _, rest = message.partition(" ")
                 if cmd in COMMANDS:
                     method_name = COMMANDS[cmd]
-                    method = getattr(self, method_name, default=None)
+                    method = getattr(self, method_name, None)
                     if method is None:
                         self.send("I should know how to do that, but I don't NotLikeThis")
                     else:
-                        method(rest, user)
+                        method(rest, user, tags)
                 elif cmd.startswith('!'):
                     self.try_custom_command(cmd[1:])
             except Exception as e:
@@ -86,21 +139,19 @@ class FamiliarBot(TwitchIrc):
                 break
         
         if len(self.prev_timestamps) < RATE_LIMIT_COUNT:
-            self.message(CHANNEL, message)
+            conn = self.connection
+            conn.privmsg(self.channel, message)
         else:
             self.on_rate_limit()
     
     def on_rate_limit(self):
         print("welp, rate limited")
 
-    def is_power_user(self, user):
-        return user.lower() in COOL_PEOPLE
-
     def complain_no_permission(self, user):
-        self.send(f"Sorry, {user}, I don't believe you")
+        self.send(f"Sorry, {user}, I don't know if I should listen to you")
 
     # the chat commands start here!
-    def cmd_add_quote(self, quote, user):
+    def cmd_add_quote(self, quote, user, tags):
         quote_id = db.new_row(
             "INSERT INTO quotes (quote, user, timestamp) VALUES (?, ?, datetime('now'))",
             quote,
@@ -108,8 +159,8 @@ class FamiliarBot(TwitchIrc):
         )
         self.send(f"Added quote #{quote_id}.")
     
-    def cmd_add_message(self, message_def, user):
-        if self.is_power_user(user):
+    def cmd_add_message(self, message_def, user, tags):
+        if tags['mod']:
             if ' ' not in message_def:
                 self.send("Tell me what the response to that command should be.")
                 return
@@ -121,13 +172,19 @@ class FamiliarBot(TwitchIrc):
                     name,
                     response
                 )
-                self.send("Added command !{name}.")
+                self.send(f"Added command !{name}.")
             except db.IntegrityError:
-                self.send("That command already exists.")
+                db.run("DELETE FROM commands WHERE name=?", name)
+                db.new_row(
+                    "INSERT INTO commands (name, response) VALUES (?, ?)",
+                    name,
+                    response
+                )
+                self.send(f"Redefined command !{name}.")
         else:
             self.complain_no_permission(user)
     
-    def cmd_get_quote(self, query, user):
+    def cmd_get_quote(self, query, user, tags):
         if not query:
             self._quote_random()
         else:
@@ -138,29 +195,33 @@ class FamiliarBot(TwitchIrc):
                 self._quote_by_search(query)
     
     def try_custom_command(self, cmd):
-        row = db.run("SELECT (name, response) FROM commands WHERE name=?", cmd)
-        if row:
-            name, response = row
+        rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd)
+        if rows:
+            name, response = rows[0]
             self.send(response)
+        else:
+            print(f"no command named {cmd}")
 
     def _quote_random(self):
         quotes = db.run("""
-            SELECT (id, quote, user) FROM quotes
-            WHERE id IN (SELECT id FROM table ORDER BY random() LIMIT 1)
+            SELECT id, quote, user FROM quotes
+            WHERE id IN (SELECT id FROM quotes ORDER BY random() LIMIT 1)
         """)
         if quotes:
             self._send_quote(quotes[0])
 
     def _quote_by_rownum(self, rownum):
-        quotes = db.run("SELECT (id, quote, user) FROM quotes WHERE id=?", rownum)
+        quotes = db.run("SELECT id, quote, user FROM quotes WHERE id=?", rownum)
         if quotes:
             self._send_quote(quotes[0])
     
     def _quote_by_search(self, query):
         search = f'%{query}%'
-        quotes = db.run("SELECT (id, quote, user) FROM quotes WHERE id=?", rownum)
+        quotes = db.run("SELECT id, quote, user FROM quotes WHERE id=?", rownum)
         if quotes:
             self._send_quote(quotes[0])
+        else:
+            self.send("I don't know that quote.")
 
     def _send_quote(self, row):
         id, quote, user = row
@@ -169,8 +230,8 @@ class FamiliarBot(TwitchIrc):
     
 
 def main():
-    client = FamiliarBot(BOT_NAME, OAUTH_TOKEN).start()
-    client.handle_forever()
+    bot = FamiliarBot(BOT_NAME, CLIENT_ID, OAUTH_TOKEN, CHANNEL)
+    bot.start()
 
 
 if __name__ == '__main__':
