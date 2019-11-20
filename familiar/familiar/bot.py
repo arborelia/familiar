@@ -189,7 +189,8 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
             self._quote_random()
         else:
             try:
-                rownum = int(query)
+                query2 = query.lstrip('#')
+                rownum = int(query2)
                 self._quote_by_rownum(rownum)
             except ValueError:
                 self._quote_by_search(query)
@@ -217,7 +218,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
     
     def _quote_by_search(self, query):
         search = f'%{query}%'
-        quotes = db.run("SELECT id, quote, user FROM quotes WHERE id=?", rownum)
+        quotes = db.run("SELECT id, quote, user FROM quotes WHERE quote LIKE ?", search)
         if quotes:
             self._send_quote(quotes[0])
         else:
