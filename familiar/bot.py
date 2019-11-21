@@ -1,4 +1,4 @@
-import familiar.db as db
+from familiar import db, cocoron
 
 import irc.bot
 import pkg_resources
@@ -26,7 +26,8 @@ COMMANDS = {
     '!q+': 'cmd_add_quote',
     '!quote': 'cmd_get_quote',
     '!q': 'cmd_get_quote',
-    '!cocoron': 'cmd_random_cocoron',
+    '!cocoron': 'cmd_cocoron',
+    '!cchar': 'cmd_cocoron_char',
 
     '!addmsg': 'cmd_add_message',
     '!addmessage': 'cmd_add_message',
@@ -195,6 +196,15 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
             except ValueError:
                 self._quote_by_search(query)
     
+    def cmd_cocoron(self, query, user, tags):
+        messages = cocoron.cocoron_rando()
+        for message in messages:
+            self.send(message)
+
+    def cmd_cocoron_char(self, query, user, tags):
+        char = cocoron.cocoron_char()
+        self.send(f"Your new character is {char}.")
+
     def try_custom_command(self, cmd):
         rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd)
         if rows:
