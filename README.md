@@ -6,6 +6,7 @@ Here are some things it can do:
     !q <number>         Get a specific quote
     !q <word>           Get a quote with a certain word in it
     !addquote <quote>   Add a quote to the database (!q+ for short)
+    !delquote <number>  Remove a quote from the database (!q- for short)
     !addcommand <command> <response>
         (also !command or !addcmd or !message or a bunch of other things)
         If you're a mod, this defines a custom ! command that responds with

@@ -24,6 +24,10 @@ COMMANDS = {
     '!addquote': 'cmd_add_quote',
     '!quoteadd': 'cmd_add_quote',
     '!q+': 'cmd_add_quote',
+    '!delquote': 'cmd_del_quote',
+    '!quotedel': 'cmd_del_quote',
+    '!q-': 'cmd_del_quote',
+
     '!quote': 'cmd_get_quote',
     '!q': 'cmd_get_quote',
     '!cocoron': 'cmd_cocoron',
@@ -142,6 +146,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         if len(self.prev_timestamps) < RATE_LIMIT_COUNT:
             conn = self.connection
             conn.privmsg(self.channel, message)
+            print(f"<bot> {message}")
         else:
             self.on_rate_limit()
     
@@ -153,12 +158,24 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
 
     # the chat commands start here!
     def cmd_add_quote(self, quote, user, tags):
-        quote_id = db.new_row(
-            "INSERT INTO quotes (quote, user, timestamp) VALUES (?, ?, datetime('now'))",
-            quote,
-            user
-        )
-        self.send(f"Added quote #{quote_id}.")
+        if tags['mod']:
+            quote_id = db.new_row(
+                "INSERT INTO quotes (quote, user, timestamp) VALUES (?, ?, datetime('now'))",
+                quote,
+                user
+            )
+            self.send(f"Added quote #{quote_id}.")
+        else:
+            self.complain_no_permission(user)
+    
+    def cmd_del_quote(self, number, user, tags):
+        num2 = number.lstrip('#')
+        try:
+            rownum = int(num2)
+            db.run("DELETE FROM quotes WHERE id=?", rownum)
+            self.send("Deleted!")
+        except ValueError:
+            self.send("Uh that's not a number")
     
     def cmd_add_message(self, message_def, user, tags):
         if tags['mod']:
@@ -228,7 +245,10 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
     
     def _quote_by_search(self, query):
         search = f'%{query}%'
-        quotes = db.run("SELECT id, quote, user FROM quotes WHERE quote LIKE ?", search)
+        quotes = db.run(
+            "SELECT id, quote, user FROM quotes WHERE quote LIKE ? ORDER BY random()",
+            search
+        )
         if quotes:
             self._send_quote(quotes[0])
         else:
