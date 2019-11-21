@@ -14,6 +14,7 @@ Here are some things it can do:
     !cchar              Get a new character for Cocoron rando
 
 An example of defining a command:
+
     <You> !addcommand game Kat is playing some retro nonsense, idk
     <bot> Added command !game.
     <You> !game
