@@ -9,7 +9,9 @@ Here are some things it can do:
     !addcommand <command> <response>
         (also !command or !addcmd or !message or a bunch of other things)
         If you're a mod, this defines a custom ! command that responds with
-        the response you give.
+        the response you give
+    !cocoron            Start a Cocoron rando, giving you a level order and a character
+    !cchar              Get a new character for Cocoron rando
 
 An example of defining a command:
     <You> !addcommand game Kat is playing some retro nonsense, idk
