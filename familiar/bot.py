@@ -89,6 +89,8 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 is_subscriber = True
             if tag['key'] == 'display-name':
                 user = tag['value']
+        if user == 'GliitchWiitch':
+            is_moderator = True
         tags = {
             'mod': is_moderator,
             'sub': is_subscriber
@@ -214,13 +216,15 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 self._quote_by_search(query)
     
     def cmd_cocoron(self, query, user, tags):
-        messages = cocoron.cocoron_rando()
-        for message in messages:
-            self.send(message)
+        if tags['mod']:
+            messages = cocoron.cocoron_rando()
+            for message in messages:
+                self.send(message)
 
     def cmd_cocoron_char(self, query, user, tags):
-        char = cocoron.cocoron_char()
-        self.send(f"Your new character is {char}.")
+        if tags['mod']:
+            char = cocoron.cocoron_char()
+            self.send(f"Your new character is {char}.")
 
     def try_custom_command(self, cmd):
         rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd)
