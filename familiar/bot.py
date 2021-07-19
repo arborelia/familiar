@@ -224,7 +224,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
             self.send(f"Your new character is {char}.")
 
     def try_custom_command(self, cmd):
-        rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd)
+        rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd.lower())
         if rows:
             name, response = rows[0]
             self.send(response)
