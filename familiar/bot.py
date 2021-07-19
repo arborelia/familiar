@@ -16,7 +16,8 @@ OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt").d
 
 # People who have power for certain bot commands.
 # For now, this should be a set of all-lowercase names.
-# TODO: check if they're a mod instead.
+#
+# TODO: make sure this is unused because now we check for mods
 COOL_PEOPLE = {'gliitchwiitch', 'arborelia', 'karma_dragoness', 'mus_musculus', 'jayricochet'}
 
 
@@ -58,9 +59,11 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
 
         url = f'https://api.twitch.tv/kraken/users?login={username}'
         headers = {'Client-ID': client_id, 'Accept': 'application/vnd.twitchtv.v5+json'}
-        r = requests.get(url, headers=headers).json()
+        resp = requests.get(url, headers=headers)
+        print(resp.text)
+        r = resp.json()
         self.channel_id = r['users'][0]['_id']
-        
+
         connect_options = [('irc.chat.twitch.tv', 6667, token)]
         super().__init__(connect_options, username, username)
 
@@ -98,7 +101,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         self.on_message(
             channel, user, message, tags
         )
-    
+
     def on_message(self, channel, user, message, tags):
         print(f"<{user}> {message}")
         if channel == CHANNEL and user != BOT_NAME:
@@ -144,14 +147,14 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 self.prev_timestamps = self.prev_timestamps[1:]
             else:
                 break
-        
+
         if len(self.prev_timestamps) < RATE_LIMIT_COUNT:
             conn = self.connection
             conn.privmsg(self.channel, message)
             print(f"<bot> {message}")
         else:
             self.on_rate_limit()
-    
+
     def on_rate_limit(self):
         print("welp, rate limited")
 
@@ -169,7 +172,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
             self.send(f"Added quote #{quote_id}.")
         else:
             self.complain_no_permission(user)
-    
+
     def cmd_del_quote(self, number, user, tags):
         num2 = number.lstrip('#')
         try:
@@ -178,7 +181,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
             self.send("Deleted!")
         except ValueError:
             self.send("Uh that's not a number")
-    
+
     def cmd_add_message(self, message_def, user, tags):
         if tags['mod']:
             if ' ' not in message_def:
@@ -203,7 +206,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 self.send(f"Redefined command !{name}.")
         else:
             self.complain_no_permission(user)
-    
+
     def cmd_get_quote(self, query, user, tags):
         if not query:
             self._quote_random()
@@ -214,7 +217,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 self._quote_by_rownum(rownum)
             except ValueError:
                 self._quote_by_search(query)
-    
+
     def cmd_cocoron(self, query, user, tags):
         if tags['mod']:
             messages = cocoron.cocoron_rando()
@@ -246,7 +249,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         quotes = db.run("SELECT id, quote, user FROM quotes WHERE id=?", rownum)
         if quotes:
             self._send_quote(quotes[0])
-    
+
     def _quote_by_search(self, query):
         search = f'%{query}%'
         quotes = db.run(
@@ -260,9 +263,9 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
 
     def _send_quote(self, row):
         id, quote, user = row
-        self.send(f'"{quote}"')
+        self.send(quote)
         self.send(f'(#{id}, submitted by {user})')
-    
+
 
 def main():
     bot = FamiliarBot(BOT_NAME, CLIENT_ID, OAUTH_TOKEN, CHANNEL)
