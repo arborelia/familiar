@@ -1,4 +1,4 @@
-This is WiitchFamiliar, a bot for GliitchWiitch's channel!
+This is WiitchFamiliar, a bot for FlannelKat's channel!
 
 Here are some things it can do:
 
