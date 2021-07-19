@@ -7,18 +7,12 @@ import sys
 import time
 import traceback
 
-CHANNEL = '#gliitchwiitch'
+CHANNEL = '#flannelkat'
 RATE_LIMIT_COUNT = 10
 RATE_LIMIT_SECONDS = 30
 BOT_NAME = 'WiitchFamiliar'
 CLIENT_ID = pkg_resources.resource_string(__name__, "data/client-id.txt").decode('utf-8').strip()
 OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt").decode('utf-8').strip()
-
-# People who have power for certain bot commands.
-# For now, this should be a set of all-lowercase names.
-#
-# TODO: make sure this is unused because now we check for mods
-COOL_PEOPLE = {'gliitchwiitch', 'arborelia', 'karma_dragoness', 'mus_musculus', 'jayricochet'}
 
 
 COMMANDS = {
@@ -92,7 +86,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 is_subscriber = True
             if tag['key'] == 'display-name':
                 user = tag['value']
-        if user == 'GliitchWiitch':
+        if user.lower() == 'flannelkat':
             is_moderator = True
         tags = {
             'mod': is_moderator,
