@@ -116,6 +116,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         if message:
             try:
                 cmd, _, rest = message.partition(" ")
+                cmd = cmd.lower()
                 if cmd in COMMANDS:
                     method_name = COMMANDS[cmd]
                     method = getattr(self, method_name, None)
