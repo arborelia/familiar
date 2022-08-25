@@ -1,4 +1,4 @@
-from familiar import db, cocoron
+from familiar import db, cocoron, pinball
 
 import irc.bot
 import pkg_resources
@@ -10,6 +10,7 @@ import traceback
 CHANNEL = "#flannelkat"
 RATE_LIMIT_COUNT = 10
 RATE_LIMIT_SECONDS = 30
+PINBALL_DELAY = 20
 BOT_NAME = "WiitchFamiliar"
 CLIENT_ID = (
     pkg_resources.resource_string(__name__, "data/client-id.txt")
@@ -46,6 +47,7 @@ COMMANDS = {
     "!delmessage": "cmd_delete_message",
     "!delcmd": "cmd_delete_message",
     "!delcommand": "cmd_delete_message",
+    "!pinballtable": "cmd_pinball_table"
 }
 
 
@@ -56,13 +58,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         self.token = token
         self.channel = channel
         self.prev_timestamps = []
-
-        url = f"https://api.twitch.tv/kraken/users?login={username}"
-        headers = {"Client-ID": client_id, "Accept": "application/vnd.twitchtv.v5+json"}
-        resp = requests.get(url, headers=headers)
-        print(resp.text)
-        r = resp.json()
-        self.channel_id = r["users"][0]["_id"]
+        self.pinball_timestamp = None
 
         connect_options = [("irc.chat.twitch.tv", 6667, token)]
         super().__init__(connect_options, username, username)
@@ -211,6 +207,16 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 self._quote_by_rownum(rownum)
             except ValueError:
                 self._quote_by_search(query)
+
+    def cmd_pinball_table(self, query, user, tags):
+        if (
+            self.pinball_timestamp is None
+            or time.monotonic() - self.pinball_timestamp >= PINBALL_DELAY
+            or tags["mod"]
+        ):
+            message = pinball.pinball_table()
+            self.send(message)
+            self.pinball_timestamp = time.monotonic()
 
     def cmd_cocoron(self, query, user, tags):
         if tags["mod"]:
