@@ -7,10 +7,10 @@ import sys
 import time
 import traceback
 
-CHANNEL = '#flannelkat'
+CHANNEL = '#arborelia'
 RATE_LIMIT_COUNT = 10
 RATE_LIMIT_SECONDS = 30
-BOT_NAME = 'WiitchFamiliar'
+BOT_NAME = 'robo_elia'
 CLIENT_ID = pkg_resources.resource_string(__name__, "data/client-id.txt").decode('utf-8').strip()
 OAUTH_TOKEN = pkg_resources.resource_string(__name__, "data/secret-token.txt").decode('utf-8').strip()
 
@@ -56,7 +56,6 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         resp = requests.get(url, headers=headers)
         print(resp.text)
         r = resp.json()
-        self.channel_id = r['users'][0]['_id']
 
         connect_options = [('irc.chat.twitch.tv', 6667, token)]
         super().__init__(connect_options, username, username)
@@ -86,7 +85,7 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
                 is_subscriber = True
             if tag['key'] == 'display-name':
                 user = tag['value']
-        if user.lower() == 'flannelkat':
+        if user.lower() == 'flannelkat' or user.lower() == 'arborelia':
             is_moderator = True
         tags = {
             'mod': is_moderator,
