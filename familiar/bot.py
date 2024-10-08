@@ -1,11 +1,14 @@
 from familiar import db, cocoron, pinball
 
 import irc.bot
+import logging
 import pkg_resources
 import requests
 import sys
 import time
 import traceback
+
+logging.basicConfig(level=logging.DEBUG)
 
 CHANNEL = '#arborelia'
 RATE_LIMIT_COUNT = 10
@@ -18,7 +21,7 @@ CLIENT_ID = (
     .strip()
 )
 OAUTH_TOKEN = (
-    pkg_resources.resource_string(__name__, "data/secret-token-elia.txt")
+    pkg_resources.resource_string(__name__, "data/oauth-token-elia.txt")
     .decode("utf-8")
     .strip()
 )
