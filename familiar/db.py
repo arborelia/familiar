@@ -38,6 +38,26 @@ def init_tables():
         """)
 
 
+    if not _check_table_exists('pinballtables'):
+        DB.execute("""
+        CREATE TABLE pinballtables (
+            id TEXT NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL,
+            year INTEGER NOT NULL
+        )
+        """)
+
+    if not _check_table_exists('scores'):
+        DB.execute("""
+        CREATE TABLE scores (
+            id INTEGER NOT NULL PRIMARY KEY,
+            table_id TEXT NOT NULL,
+            username TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            timestamp TEXT NOT NULL
+        )
+        """)
+
     if not _check_table_exists('commands'):
         DB.execute("""
         CREATE TABLE commands (

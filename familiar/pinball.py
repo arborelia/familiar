@@ -9,7 +9,7 @@ tables = open(FILENAME).read().strip().split("\n")
 table_names = {
     "nudgy": "Nudgy (1947)",
     "humpty": "Humpty Dumpty (1947)",
-    "alice": "Alice in Wonderland (1947)",
+    "alice": "Alice in Wonderland (1948)",
     "joker": "Joker (1950)",
     "knockout": "Knock-Out (1950)",
     "spark": "Spark Plugs (1951)"

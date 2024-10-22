@@ -1,4 +1,7 @@
 familiar/data
+familiar/data-separate
 env
 *.egg-info
 __pycache__
+build
+dist

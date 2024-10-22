@@ -1,4 +1,5 @@
 from familiar import db, cocoron, pinball
+from familiar.pinball import table_names
 
 import irc.bot
 import logging
@@ -50,7 +51,8 @@ COMMANDS = {
     "!delmessage": "cmd_delete_message",
     "!delcmd": "cmd_delete_message",
     "!delcommand": "cmd_delete_message",
-    "!pinballtable": "cmd_pinball_table"
+    "!pinballtable": "cmd_pinball_table",
+    "!score": "cmd_score"
 }
 
 
@@ -231,6 +233,22 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         if tags["mod"]:
             char = cocoron.cocoron_char()
             self.send(f"Your new character is {char}.")
+
+    def cmd_score(self, query, user, tags):
+        if " " not in query:
+            self.send("Submit scores with: !score [table-id] [score]")
+            return
+        table_id, score_str = query.split(" ", 1)
+        try:
+            score = int(score_str.replace(",", ""))
+        except ValueError:
+            self.send(f"{score_str!r} is not a number")
+
+        table_name = table_names.get(table_id, table_id)
+        msg = f"{user} scored {score} on {table_name}"
+        self.send(msg)
+        with open("pinball-scores.txt", "a") as out:
+            print(msg, file=out)
 
     def try_custom_command(self, cmd):
         rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd.lower())
