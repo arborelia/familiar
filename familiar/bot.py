@@ -52,7 +52,9 @@ COMMANDS = {
     "!delcmd": "cmd_delete_message",
     "!delcommand": "cmd_delete_message",
     "!pinballtable": "cmd_pinball_table",
-    "!score": "cmd_score"
+    "!score": "cmd_score",
+    "!hiscore": "cmd_hi_score",
+    "!highscore": "cmd_hi_score"
 }
 
 
@@ -244,11 +246,26 @@ class FamiliarBot(irc.bot.SingleServerIRCBot):
         except ValueError:
             self.send(f"{score_str!r} is not a number")
 
-        table_name = table_names.get(table_id, table_id)
-        msg = f"{user} scored {score} on {table_name}"
-        self.send(msg)
-        with open("pinball-scores.txt", "a") as out:
-            print(msg, file=out)
+        rows = db.run("SELECT name, year FROM pinballtables WHERE id=?", table_id.lower())
+        if rows:
+            table_name, year = rows[0]
+            msg = f"{user} scored {score:,} on {table_name} ({year})"
+            self.send(msg)
+            with open("pinball-scores.txt", "a") as out:
+                print(msg, file=out)
+            db.new_row(
+                "INSERT INTO scores (table_id, username, score, timestamp) VALUES (?, ?, ?, datetime('now'))",
+                table_id,
+                user,
+                score,
+            )
+            high_score_rows = db.run("SELECT score FROM scores WHERE table_id=? ORDER BY score DESC LIMIT 1", table_id)
+            if high_score_rows:
+                high_score = high_score_rows[0][0]
+                if high_score == score:
+                    self.send(f"{user} has the new high score on {table_name}!")
+        else:
+            self.send(f"{table_id!r} isn't a table ID that I know")
 
     def try_custom_command(self, cmd):
         rows = db.run("SELECT name, response FROM commands WHERE name=?", cmd.lower())

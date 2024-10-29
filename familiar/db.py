@@ -43,7 +43,8 @@ def init_tables():
         CREATE TABLE pinballtables (
             id TEXT NOT NULL PRIMARY KEY,
             name TEXT NOT NULL,
-            year INTEGER NOT NULL
+            year INTEGER NOT NULL,
+            episode INTEGER NOT NULL
         )
         """)
 
