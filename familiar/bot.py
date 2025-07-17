@@ -1,5 +1,5 @@
 from familiar import db, cocoron, pinball
-from familiar.pinball import table_names
+#from familiar.pinball import table_names
 
 import irc.bot
 import logging
